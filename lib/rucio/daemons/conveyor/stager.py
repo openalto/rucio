@@ -43,17 +43,18 @@ from rucio.common import exception
 from rucio.common.config import config_get, config_get_bool, config_get_int
 from rucio.common.logging import setup_logging
 from rucio.core.monitor import record_counter, record_timer
-from rucio.core import transfer as transfer_core
-from rucio.daemons.conveyor.common import submit_transfer, get_conveyor_rses, run_conveyor_daemon
+from rucio.daemons.conveyor.common import submit_transfer, get_conveyor_rses, run_conveyor_daemon, next_transfers_to_submit
 from rucio.db.sqla.constants import RequestType
 from rucio.transfertool.fts3 import FTS3Transfertool
 
 graceful_stop = threading.Event()
 
 
-def run_once(bulk, group_bulk, rse_ids, scheme, failover_scheme, transfertool_kwargs, total_workers, worker_number, logger, activity):
+def run_once(bulk, group_bulk, rse_ids, scheme, failover_scheme, transfertool_kwargs, heartbeat_handler, activity):
+    worker_number, total_workers, logger = heartbeat_handler.live()
+
     start_time = time.time()
-    transfers = transfer_core.next_transfers_to_submit(
+    transfers = next_transfers_to_submit(
         total_workers=total_workers,
         worker_number=worker_number,
         failover_schemes=failover_scheme,
@@ -81,6 +82,7 @@ def run_once(bulk, group_bulk, rse_ids, scheme, failover_scheme, transfertool_kw
 
         logger(logging.INFO, 'Starting to submit transfers for %s (%s)' % (activity, transfertool_obj))
         for job in grouped_jobs:
+            worker_number, total_workers, logger = heartbeat_handler.live()
             submit_transfer(transfertool_obj=transfertool_obj, transfers=job['transfers'], job_params=job['job_params'], submitter='transfer_submitter', logger=logger)
 
     queue_empty = False
@@ -162,7 +164,6 @@ def stager(once=False, rses=None, bulk=100, group_bulk=1, group_policy='rule',
             transfertool_kwargs=transfertool_kwargs,
         ),
         activities=activities,
-        heart_beat_older_than=None,
     )
 
 

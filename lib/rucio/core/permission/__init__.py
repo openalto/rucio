@@ -1,4 +1,5 @@
-# Copyright 2016-2020 CERN for the benefit of the ATLAS collaboration.
+# -*- coding: utf-8 -*-
+# Copyright 2016-2022 CERN
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +20,11 @@
 # - James Perry <j.perry@epcc.ed.ac.uk>, 2019-2020
 # - Eli Chadwick <eli.chadwick@stfc.ac.uk>, 2020
 # - Benedikt Ziemons <benedikt.ziemons@cern.ch>, 2020
-#
-# PY3K COMPATIBLE
+# - David Población Criado <david.poblacion.criado@cern.ch>, 2021
+# - Thysk <timx2tt@hotmail.co.uk>, 2021
+# - Radu Carpa <radu.carpa@cern.ch>, 2022
+
+from os import environ
 
 try:
     from ConfigParser import NoOptionError, NoSectionError
@@ -57,7 +61,10 @@ if not multivo:
 
     if config.config_has_section('policy'):
         try:
-            POLICY = config.config_get('policy', 'package', check_config_table=False) + ".permission"
+            if 'RUCIO_POLICY_PACKAGE' in environ:
+                POLICY = environ['RUCIO_POLICY_PACKAGE'] + ".permission"
+            else:
+                POLICY = config.config_get('policy', 'package', check_config_table=False) + ".permission"
         except (NoOptionError, NoSectionError):
             # fall back to old system for now
             POLICY = 'rucio.core.permission.' + FALLBACK_POLICY.lower()
@@ -76,7 +83,11 @@ def load_permission_for_vo(vo):
     GENERIC_FALLBACK = 'generic_multi_vo'
     if config.config_has_section('policy'):
         try:
-            POLICY = config.config_get('policy', 'package-' + vo) + ".permission"
+            env_name = 'RUCIO_POLICY_PACKAGE_' + vo.upper()
+            if env_name in environ:
+                POLICY = environ[env_name] + ".permission"
+            else:
+                POLICY = config.config_get('policy', 'package-' + vo) + ".permission"
         except (NoOptionError, NoSectionError):
             # fall back to old system for now
             try:
@@ -95,7 +106,7 @@ def load_permission_for_vo(vo):
     permission_modules[vo] = module
 
 
-def has_permission(issuer, action, kwargs):
+def has_permission(issuer, action, kwargs, session=None):
     if issuer.vo not in permission_modules:
         load_permission_for_vo(issuer.vo)
-    return permission_modules[issuer.vo].has_permission(issuer, action, kwargs)
+    return permission_modules[issuer.vo].has_permission(issuer, action, kwargs, session=session)

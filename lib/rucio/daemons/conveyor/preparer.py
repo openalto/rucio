@@ -30,14 +30,14 @@ from rucio.common import exception
 from rucio.common.exception import RucioException
 from rucio.common.logging import setup_logging
 from rucio.core.request import preparer_update_requests, reduce_requests, sort_requests_minimum_distance, \
-    get_transfertool_filter, get_supported_transfertools, rse_lookup_filter
-from rucio.core.transfer import __list_transfer_requests_and_source_replicas
+    get_transfertool_filter, get_supported_transfertools, rse_lookup_filter, list_transfer_requests_and_source_replicas
 from rucio.daemons.conveyor.common import run_conveyor_daemon
 from rucio.db.sqla.constants import RequestState
 
 if TYPE_CHECKING:
     from typing import Optional
     from sqlalchemy.orm import Session
+    from rucio.daemons.conveyor.common import HeartbeatHandler
 
 graceful_stop = threading.Event()
 
@@ -103,14 +103,19 @@ def preparer(once, sleep_time, bulk, partition_wait_time=10):
             bulk=bulk
         ),
         activities=None,
-        heart_beat_older_than=None,
     )
 
 
-def run_once(bulk: int = 100, total_workers: int = 0, worker_number: int = 0, limit: "Optional[int]" = None, logger=logging.log, session: "Optional[Session]" = None, **kwargs) -> bool:
+def run_once(bulk: int = 100, heartbeat_handler: "Optional[HeartbeatHandler]" = None, limit: "Optional[int]" = None, session: "Optional[Session]" = None, **kwargs) -> bool:
+    if heartbeat_handler:
+        worker_number, total_workers, logger = heartbeat_handler.live()
+    else:
+        # This is used in tests
+        worker_number, total_workers, logger = 0, 0, logging.log
+
     start_time = time()
     try:
-        req_sources = __list_transfer_requests_and_source_replicas(
+        req_sources = list_transfer_requests_and_source_replicas(
             total_workers=total_workers,
             worker_number=worker_number,
             limit=limit,

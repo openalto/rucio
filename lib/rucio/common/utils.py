@@ -17,10 +17,10 @@
 # - Vincent Garonne <vincent.garonne@cern.ch>, 2012-2018
 # - Thomas Beermann <thomas.beermann@cern.ch>, 2012-2021
 # - Mario Lassnig <mario.lassnig@cern.ch>, 2012-2021
-# - Cedric Serfon <cedric.serfon@cern.ch>, 2013-2021
+# - Cedric Serfon <cedric.serfon@cern.ch>, 2013-2022
 # - Ralph Vigne <ralph.vigne@cern.ch>, 2013
 # - Joaquín Bogado <jbogado@linti.unlp.edu.ar>, 2015-2018
-# - Martin Barisits <martin.barisits@cern.ch>, 2016-2021
+# - Martin Barisits <martin.barisits@cern.ch>, 2016-2022
 # - Brian Bockelman <bbockelm@cse.unl.edu>, 2018
 # - Tobias Wegner <twegner@cern.ch>, 2018-2019
 # - Hannes Hansen <hannes.jakob.hansen@cern.ch>, 2018-2019
@@ -35,17 +35,16 @@
 # - Benedikt Ziemons <benedikt.ziemons@cern.ch>, 2020-2021
 # - Mayank Sharma <mayank.sharma@cern.ch>, 2021
 # - Rahul Chauhan <omrahulchauhan@gmail.com>, 2021
-# - Radu Carpa <radu.carpa@cern.ch>, 2021
+# - Radu Carpa <radu.carpa@cern.ch>, 2021-2022
 # - Anil Panta <47672624+panta-123@users.noreply.github.com>, 2021
 # - Ilija Vukotic <ivukotic@cern.ch>, 2021
 # - David Población Criado <david.poblacion.criado@cern.ch>, 2021
-# - martynia <janusz.martyniak@googlemail.com>, 2021
+# - martynia <janusz.martyniak@googlemail.com>, 2021-2022
 # - jdierkes <joel.dierkes@cern.ch>, 2021
 # - Rakshita Varadarajan <rakshitajps@gmail.com>, 2021
 # - Rob Barnsley <robbarnsley@users.noreply.github.com>, 2021
 # - Igor Mandrichenko <ivm@fnal.gov>, 2021
 # - Joel Dierkes <joel.dierkes@cern.ch>, 2021
-# - Janusz Martyniak <janusz.martyniak@googlemail.com>, 2022
 
 from __future__ import absolute_import, print_function
 
@@ -196,8 +195,7 @@ def all_oidc_req_claims_present(scope, audience, required_scope, required_audien
         req_scope_present = all(elem in scope for elem in required_scope)
         req_audience_present = all(elem in audience for elem in required_audience)
         return req_scope_present and req_audience_present
-    elif (isinstance(scope, string_types) and isinstance(audience, string_types)  # NOQA: W504
-          and isinstance(required_scope, string_types) and isinstance(required_audience, string_types)):
+    elif (isinstance(scope, string_types) and isinstance(audience, string_types) and isinstance(required_scope, string_types) and isinstance(required_audience, string_types)):
         scope = str(scope)
         audience = str(audience)
         required_scope = str(required_scope)
@@ -205,8 +203,7 @@ def all_oidc_req_claims_present(scope, audience, required_scope, required_audien
         req_scope_present = all(elem in scope.split(sepatator) for elem in required_scope.split(sepatator))
         req_audience_present = all(elem in audience.split(sepatator) for elem in required_audience.split(sepatator))
         return req_scope_present and req_audience_present
-    elif (isinstance(scope, list) and isinstance(audience, list)  # NOQA: W504
-          and isinstance(required_scope, string_types) and isinstance(required_audience, string_types)):
+    elif (isinstance(scope, list) and isinstance(audience, list) and isinstance(required_scope, string_types) and isinstance(required_audience, string_types)):
         scope = [str(it) for it in scope]
         audience = [str(it) for it in audience]
         required_scope = str(required_scope)
@@ -214,8 +211,7 @@ def all_oidc_req_claims_present(scope, audience, required_scope, required_audien
         req_scope_present = all(elem in scope for elem in required_scope.split(sepatator))
         req_audience_present = all(elem in audience for elem in required_audience.split(sepatator))
         return req_scope_present and req_audience_present
-    elif (isinstance(scope, string_types) and isinstance(audience, string_types)  # NOQA: W504
-          and isinstance(required_scope, list) and isinstance(required_audience, list)):
+    elif (isinstance(scope, string_types) and isinstance(audience, string_types) and isinstance(required_scope, list) and isinstance(required_audience, list)):
         scope = str(scope)
         audience = str(audience)
         required_scope = [str(it) for it in required_scope]
@@ -488,7 +484,7 @@ def execute(cmd, blocking=True):
 
 def rse_supported_protocol_operations():
     """ Returns a list with operations supported by all RSE protocols."""
-    return ['read', 'write', 'delete', 'third_party_copy']
+    return ['read', 'write', 'delete', 'third_party_copy', 'third_party_copy_read', 'third_party_copy_write']
 
 
 def rse_supported_protocol_domains():
@@ -503,12 +499,20 @@ def grouper(iterable, n, fillvalue=None):
     return izip_longest(*args, fillvalue=fillvalue)
 
 
-def chunks(list_, n):
+def chunks(iterable, n):
     """
     Yield successive n-sized chunks from l.
     """
-    for i in range(0, len(list_), n):
-        yield list_[i:i + n]
+    if isinstance(iterable, list):
+        for i in range(0, len(iterable), n):
+            yield iterable[i:i + n]
+    else:
+        it = iter(iterable)
+        while True:
+            chunk = list(itertools.islice(it, n))
+            if not chunk:
+                return
+            yield chunk
 
 
 def dict_chunks(dict_, n):
@@ -624,47 +628,11 @@ register_surl_algorithm(construct_surl_DQ2, 'DQ2')
 register_surl_algorithm(construct_surl_BelleII, 'BelleII')
 
 
-def _register_policy_package_surl_algorithms():
-    def try_importing_policy(vo=None):
-        import importlib
-        try:
-            package = config.config_get('policy', 'package' + ('' if not vo else '-' + vo['vo']))
-            module = importlib.import_module(package)
-            if hasattr(module, 'get_surl_algorithms'):
-                surl_algorithms = module.get_surl_algorithms()
-                if not vo:
-                    _SURL_ALGORITHMS.update(surl_algorithms)
-                else:
-                    # check that the names are correctly prefixed
-                    for k in surl_algorithms.keys():
-                        if k.lower().startswith(vo['vo'].lower()):
-                            _SURL_ALGORITHMS[k] = surl_algorithms[k]
-                        else:
-                            raise InvalidAlgorithmName(k, vo['vo'])
-        except (NoOptionError, NoSectionError, ImportError):
-            pass
-
-    from rucio.common import config
-    from rucio.core.vo import list_vos
-    try:
-        multivo = config.config_get_bool('common', 'multi_vo')
-    except (NoOptionError, NoSectionError):
-        multivo = False
-    if not multivo:
-        # single policy package
-        try_importing_policy()
-    else:
-        # policy package per VO
-        vos = list_vos()
-        for vo in vos:
-            try_importing_policy(vo)
-
-
 def construct_surl(dsn, filename, naming_convention=None):
     global _loaded_policy_modules
     if not _loaded_policy_modules:
         # on first call, register any SURL functions from the policy packages
-        _register_policy_package_surl_algorithms()
+        register_policy_package_algorithms('surl', _SURL_ALGORITHMS)
         _loaded_policy_modules = True
 
     if naming_convention is None or naming_convention not in _SURL_ALGORITHMS:
@@ -716,7 +684,7 @@ def clean_surls(surls):
             surl = re.sub(r'/srm/managerv1\?SFN=', '', surl)
             surl = re.sub(r'/srm/v2/server\?SFN=', '', surl)
             surl = re.sub(r'/srm/managerv2\?SFN=', '', surl)
-        if surl.startswith('https://storage.googleapis.com'):
+        if '?GoogleAccessId' in surl:
             surl = surl.split('?GoogleAccessId')[0]
         if '?X-Amz' in surl:
             surl = surl.split('?X-Amz')[0]
@@ -727,6 +695,7 @@ def clean_surls(surls):
 
 _EXTRACT_SCOPE_ALGORITHMS = {}
 _DEFAULT_EXTRACT = 'atlas'
+_loaded_policy_package_scope_algorithms = False
 
 
 def extract_scope_atlas(did, scopes):
@@ -843,6 +812,10 @@ register_extract_scope_algorithm(extract_scope_dirac, 'dirac')
 
 
 def extract_scope(did, scopes=None, default_extract=_DEFAULT_EXTRACT):
+    global _loaded_policy_package_scope_algorithms
+    if not _loaded_policy_package_scope_algorithms:
+        register_policy_package_algorithms('scope', _EXTRACT_SCOPE_ALGORITHMS)
+        _loaded_policy_package_scope_algorithms = True
     extract_scope_convention = config_get('common', 'extract_scope', False, None)
     if extract_scope_convention is None or extract_scope_convention not in _EXTRACT_SCOPE_ALGORITHMS:
         extract_scope_convention = default_extract
@@ -1447,11 +1420,12 @@ def run_cmd_process(cmd, timeout=3600):
     return returncode, stdout
 
 
-def api_update_return_dict(dictionary):
+def api_update_return_dict(dictionary, session=None):
     """
     Ensure that rse is in a dictionary returned from core
 
     :param dictionary: The dictionary to edit
+    :param session: The DB session to use
     :returns dictionary: The edited dictionary
     """
     if not isinstance(dictionary, dict):
@@ -1467,7 +1441,7 @@ def api_update_return_dict(dictionary):
                     dictionary = dictionary.copy()
                     copied = True
                 import rucio.core.rse
-                dictionary[rse_str] = rucio.core.rse.get_rse_name(rse_id=dictionary[rse_id_str])
+                dictionary[rse_str] = rucio.core.rse.get_rse_name(rse_id=dictionary[rse_id_str], session=session)
 
     if 'account' in dictionary.keys() and dictionary['account'] is not None:
         if not copied:
@@ -1819,3 +1793,72 @@ class PriorityQueue:
 
         self.container[self.heap[pos]].pos = pos
         return heap_changed
+
+
+def register_policy_package_algorithms(algorithm_type, dictionary):
+    '''
+    Loads all the algorithms of a given type from the policy package(s) and registers them
+    :param algorithm_type: the type of algorithm to register (e.g. 'surl', 'lfn2pfn')
+    :param dictionary: the dictionary to register them in
+    :param vo: the name of the relevant VO (None for single VO)
+    '''
+    def try_importing_policy(algorithm_type, dictionary, vo=None):
+        import importlib
+        try:
+            env_name = 'RUCIO_POLICY_PACKAGE' + ('' if not vo else '_' + vo.upper())
+            if env_name in os.environ:
+                package = os.environ[env_name]
+            else:
+                package = config.config_get('policy', 'package' + ('' if not vo else '-' + vo))
+            module = importlib.import_module(package)
+            if hasattr(module, 'get_algorithms'):
+                all_algorithms = module.get_algorithms()
+                if algorithm_type in all_algorithms:
+                    algorithms = all_algorithms[algorithm_type]
+                    if not vo:
+                        dictionary.update(algorithms)
+                    else:
+                        # check that the names are correctly prefixed
+                        for k in algorithms.keys():
+                            if k.lower().startswith(vo.lower()):
+                                dictionary[k] = algorithms[k]
+                            else:
+                                raise InvalidAlgorithmName(k, vo)
+        except (NoOptionError, NoSectionError, ImportError):
+            pass
+
+    from rucio.common import config
+    try:
+        multivo = config.config_get_bool('common', 'multi_vo')
+    except (NoOptionError, NoSectionError):
+        multivo = False
+    if not multivo:
+        # single policy package
+        try_importing_policy(algorithm_type, dictionary)
+    else:
+        # determine whether on client or server
+        client = False
+        if 'RUCIO_CLIENT_MODE' not in os.environ:
+            if not config.config_has_section('database') and config.config_has_section('client'):
+                client = True
+        else:
+            if os.environ['RUCIO_CLIENT_MODE']:
+                client = True
+
+        # on client, only register algorithms for selected VO
+        if client:
+            if 'RUCIO_VO' in os.environ:
+                vo = os.environ['RUCIO_VO']
+            else:
+                try:
+                    vo = config.config_get('client', 'vo')
+                except (NoOptionError, NoSectionError):
+                    vo = 'def'
+            try_importing_policy(algorithm_type, dictionary, vo)
+        # on server, list all VOs and register their algorithms
+        else:
+            from rucio.core.vo import list_vos
+            # policy package per VO
+            vos = list_vos()
+            for vo in vos:
+                try_importing_policy(algorithm_type, dictionary, vo['vo'])
