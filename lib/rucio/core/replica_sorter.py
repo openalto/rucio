@@ -34,6 +34,7 @@ from tempfile import TemporaryDirectory, TemporaryFile
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
+import alto.client
 import geoip2.database
 import requests
 from dogpile.cache.api import NO_VALUE
@@ -165,6 +166,15 @@ def __get_distance(se1, client_location, ignore_error):
     return cache_val
 
 
+def __get_alto_cost(se, client_ip):
+    """
+    Get the ALTO routing cost between 2 host.
+    :param se : A hostname or IP.
+    :param client_ip : The client IP.
+    """
+    return
+
+
 def site_selector(replicas, site, vo):
     """
     Return a list of replicas located on one site.
@@ -219,6 +229,8 @@ def sort_replicas(dictreplica: "Dict", client_location: "Dict", selection: "Opti
         replicas = sort_ranking(dictreplica, client_location)
     elif selection == 'random':
         replicas = sort_random(dictreplica)
+    elif selection == 'alto':
+        replicas = sort_alto(dictreplica, client_location)
     else:
         replicas = list(dictreplica.keys())
 
@@ -248,6 +260,18 @@ def sort_geoip(dictreplica: "Dict", client_location: "Dict", ignore_error: bool 
         return __get_distance(urlparse(pfn).hostname, client_location, ignore_error)
 
     return list(sorted(dictreplica, key=distance))
+
+
+def sort_alto(dictreplica: "Dict", client_location: "Dict") -> "List":
+    """
+    Return a list of replicas sorted by routing cost evaluated by the ALTO server.
+    :param dictreplica: A dict with replicas as keys (URIs).
+    :param client_location: Location dictionary containing {'ip', 'fqdn', 'site', 'latitude', 'longitude'}
+    """
+    def cost(pfn):
+        return __get_alto_cost(urlparse(pfn).hostname, client_location['ip'])
+
+    return list(sorted(dictreplica, key=cost))
 
 
 def sort_closeness(dictreplica: "Dict", client_location: "Dict") -> "List":
