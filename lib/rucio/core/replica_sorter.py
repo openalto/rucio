@@ -169,23 +169,43 @@ def __get_distance(se1, client_location, ignore_error):
 
 def __alto_client():
     # import alto only if using the "alto" selection option
-    from alto.client import Client
+    try:
+        from alto.client import Client
+    except ImportError as error:
+        print('Please install ALTO python library first.')
+        print('See details: https://github.com/openalto/alto')
+        raise error
     return Client()
 
 
-def __get_alto_cost(se, client_ip):
+def __get_alto_costs(ses, client_ip):
     """
     Get the ALTO routing cost between 2 host.
-    :param se : A hostname or IP.
+    :param ses : A list of hostnames or IPs of RSEs.
     :param client_ip : The client IP.
     """
     try:
         client = __alto_client()
-    except Exception as error:
-        raise error
-    # TODO: ALTO routing cost query
-    return
+    except Exception:
+        return dict()
+    if client is None:
+        return dict()
 
+    _lookup = dict()
+    for se in ses:
+        try:
+            ip = socket.getaddrinfo(se, None)[0][4][0]
+            _lookup[se] = ip
+        except socket.gaierror as error:
+            # Host definitively unknown
+            print(error)
+
+    _raw_costs = client.get_routing_costs(list(_lookup.values()), [client_ip])
+    costs = dict()
+    for se in ses:
+        sip = _lookup.get(se)
+        costs[se] = _raw_costs[sip][client_ip] if sip else 0
+    return costs
 
 def site_selector(replicas, site, vo):
     """
@@ -280,8 +300,10 @@ def sort_alto(dictreplica: "Dict", client_location: "Dict") -> "List":
     :param dictreplica: A dict with replicas as keys (URIs).
     :param client_location: Location dictionary containing {'ip', 'fqdn', 'site', 'latitude', 'longitude'}
     """
+    _alto_costs = __get_alto_costs([urlparse(pfn).hostname for pfn in dictreplica], client_location['ip'])
+
     def cost(pfn):
-        return __get_alto_cost(urlparse(pfn).hostname, client_location['ip'])
+        return _alto_costs.get(pfn, 0)
 
     return list(sorted(dictreplica, key=cost))
 
