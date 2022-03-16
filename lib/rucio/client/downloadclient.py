@@ -19,7 +19,7 @@
 # - Joaquín Bogado <jbogado@linti.unlp.edu.ar>, 2018
 # - Nicolo Magini <nicolo.magini@cern.ch>, 2018-2019
 # - Tobias Wegner <twegner@cern.ch>, 2018-2019
-# - Martin Barisits <martin.barisits@cern.ch>, 2018-2021
+# - Martin Barisits <martin.barisits@cern.ch>, 2018-2022
 # - Hannes Hansen <hannes.jakob.hansen@cern.ch>, 2018-2019
 # - David Cameron <david.cameron@cern.ch>, 2019
 # - Gabriele Fronze' <gfronze@cern.ch>, 2019
@@ -34,6 +34,8 @@
 # - David Población Criado <david.poblacion.criado@cern.ch>, 2021
 # - Cedric Serfon <cedric.serfon@cern.ch>, 2021
 # - Joel Dierkes <joel.dierkes@cern.ch>, 2021
+# - James Perry <j.perry@epcc.ed.ac.uk>, 2021
+# - Jensen Zhang <hack@jensen-zhang.site>, 2022
 
 from __future__ import division
 
