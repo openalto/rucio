@@ -34,7 +34,6 @@ from tempfile import TemporaryDirectory, TemporaryFile
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-import alto.client
 import geoip2.database
 import requests
 from dogpile.cache.api import NO_VALUE
@@ -166,12 +165,23 @@ def __get_distance(se1, client_location, ignore_error):
     return cache_val
 
 
+def __alto_client():
+    # import alto only if using the "alto" selection option
+    from alto.client import Client
+    return Client()
+
+
 def __get_alto_cost(se, client_ip):
     """
     Get the ALTO routing cost between 2 host.
     :param se : A hostname or IP.
     :param client_ip : The client IP.
     """
+    try:
+        client = __alto_client()
+    except Exception as error:
+        raise error
+    # TODO: ALTO routing cost query
     return
 
 
