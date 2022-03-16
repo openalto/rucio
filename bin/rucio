@@ -56,6 +56,7 @@
 # - Igor Mandrichenko <ivm@fnal.gov>, 2021
 # - Rob Barnsley <robbarnsley@users.noreply.github.com>, 2021
 # - Carlosbg <bogomcar@gmail.com>, 2021
+# - Jensen Zhang <hack@jensen-zhang.site>, 2022
 
 from __future__ import print_function
 
@@ -1155,9 +1156,11 @@ def download(args):
             items.append(item_defaults)
 
         if args.aria:
-            result = download_client.download_aria2c(items, trace_pattern, deactivate_file_download_exceptions=deactivate_file_download_exceptions)
+            result = download_client.download_aria2c(items, trace_pattern, deactivate_file_download_exceptions=deactivate_file_download_exceptions, sort=args.replica_sort)
         elif args.metalink_file:
             result = download_client.download_from_metalink_file(items[0], args.metalink_file, deactivate_file_download_exceptions=deactivate_file_download_exceptions)
+            if args.replace_sort:
+                logger.warning('Ignoring --replica-sort option because --metalink-file option given')
         else:
             result = download_client.download_dids(items, args.ndownloader, trace_pattern, deactivate_file_download_exceptions=deactivate_file_download_exceptions, sort=args.replica_sort)
     else:
