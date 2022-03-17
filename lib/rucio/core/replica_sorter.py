@@ -53,6 +53,8 @@ REGION = make_region_memcached(expiration_time=900, function_key_generator=utils
 # available from <a href="http://www.maxmind.com">http://www.maxmind.com</a>
 GEOIP_DB_EDITION = 'GeoLite2-City'
 
+DEFAULT_ALTO_COST = 100
+
 
 def extract_file_from_tar_gz(archive_file_obj, file_name, destination):
     """
@@ -178,10 +180,10 @@ def __alto_client():
     return Client()
 
 
-def __get_alto_costs(ses, client_ip):
+def __get_alto_costs(pfns, client_ip):
     """
     Get the ALTO routing cost between 2 host.
-    :param ses : A list of hostnames or IPs of RSEs.
+    :param pfns : A list of pfns of replicas.
     :param client_ip : The client IP.
     """
     try:
@@ -192,20 +194,21 @@ def __get_alto_costs(ses, client_ip):
         return dict()
 
     _lookup = dict()
-    for se in ses:
+    for pfn in pfns:
         try:
-            ip = socket.getaddrinfo(se, None)[0][4][0]
-            _lookup[se] = ip
+            ip = socket.getaddrinfo(urlparse(pfn).hostname, None)[0][4][0]
+            _lookup[pfn] = ip
         except socket.gaierror as error:
             # Host definitively unknown
             print(error)
 
     _raw_costs = client.get_routing_costs(list(_lookup.values()), [client_ip])
     costs = dict()
-    for se in ses:
-        sip = _lookup.get(se)
-        costs[se] = _raw_costs[sip][client_ip] if sip else 0
+    for pfn in pfns:
+        sip = _lookup.get(pfn)
+        costs[pfn] = _raw_costs[sip][client_ip] if sip else DEFAULT_ALTO_COST
     return costs
+
 
 def site_selector(replicas, site, vo):
     """
@@ -300,10 +303,10 @@ def sort_alto(dictreplica: "Dict", client_location: "Dict") -> "List":
     :param dictreplica: A dict with replicas as keys (URIs).
     :param client_location: Location dictionary containing {'ip', 'fqdn', 'site', 'latitude', 'longitude'}
     """
-    _alto_costs = __get_alto_costs([urlparse(pfn).hostname for pfn in dictreplica], client_location['ip'])
+    _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'])
 
     def cost(pfn):
-        return _alto_costs.get(pfn, 0)
+        return _alto_costs.get(pfn, DEFAULT_ALTO_COST)
 
     return list(sorted(dictreplica, key=cost))
 
