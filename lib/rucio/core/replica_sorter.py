@@ -43,6 +43,7 @@ from rucio.common.cache import make_region_memcached
 from rucio.common.config import config_get, config_get_bool, config_get_int
 from rucio.common.exception import InvalidRSEExpression
 from rucio.core.rse_expression_parser import parse_expression
+from rucio.common.utils import parse_replica_sorter_from_string
 
 if TYPE_CHECKING:
     from typing import Dict, List, Optional
@@ -180,7 +181,7 @@ def __alto_client():
     return Client()
 
 
-def __get_alto_costs(pfns, client_ip):
+def __get_alto_costs(pfns, client_ip, cost_map=None):
     """
     Get the ALTO routing cost between 2 host.
     :param pfns : A list of pfns of replicas.
@@ -202,7 +203,7 @@ def __get_alto_costs(pfns, client_ip):
             # Host definitively unknown
             print(error)
 
-    _raw_costs = client.get_routing_costs(list(_lookup.values()), [client_ip])
+    _raw_costs = client.get_routing_costs(list(_lookup.values()), [client_ip], cost_map=cost_map)
     costs = dict()
     for pfn in pfns:
         sip = _lookup.get(pfn)
@@ -253,6 +254,8 @@ def sort_replicas(dictreplica: "Dict", client_location: "Dict", selection: "Opti
         items.sort(key=lambda item: item[1][1])
     dictreplica = OrderedDict(items)
 
+    selection, sorter_kwargs = parse_replica_sorter_from_string(selection)
+
     # all sorts must be stable to preserve the priority (the Python standard sorting functions always are stable)
     if selection == 'geoip':
         replicas = sort_geoip(dictreplica, client_location, ignore_error=True)
@@ -265,7 +268,7 @@ def sort_replicas(dictreplica: "Dict", client_location: "Dict", selection: "Opti
     elif selection == 'random':
         replicas = sort_random(dictreplica)
     elif selection == 'alto':
-        replicas = sort_alto(dictreplica, client_location)
+        replicas = sort_alto(dictreplica, client_location, **sorter_kwargs)
     else:
         replicas = list(dictreplica.keys())
 
@@ -297,18 +300,18 @@ def sort_geoip(dictreplica: "Dict", client_location: "Dict", ignore_error: bool 
     return list(sorted(dictreplica, key=distance))
 
 
-def sort_alto(dictreplica: "Dict", client_location: "Dict") -> "List":
+def sort_alto(dictreplica: "Dict", client_location: "Dict", cost_map=None, order='ascend') -> "List":
     """
     Return a list of replicas sorted by routing cost evaluated by the ALTO server.
     :param dictreplica: A dict with replicas as keys (URIs).
     :param client_location: Location dictionary containing {'ip', 'fqdn', 'site', 'latitude', 'longitude'}
     """
-    _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'])
+    _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'], cost_map=cost_map)
 
     def cost(pfn):
         return _alto_costs.get(pfn, DEFAULT_ALTO_COST)
 
-    return list(sorted(dictreplica, key=cost))
+    return list(sorted(dictreplica, key=cost, reverse=(order!='ascend')))
 
 
 def sort_closeness(dictreplica: "Dict", client_location: "Dict") -> "List":

@@ -82,7 +82,7 @@ from six.moves.configparser import NoOptionError, NoSectionError
 
 from rucio.common.config import config_get, config_has_section
 from rucio.common.exception import MissingModuleException, InvalidType, InputValidationError, MetalinkJsonParsingError, RucioException, \
-    DuplicateCriteriaInDIDFilter, DIDFilterSyntaxError, InvalidAlgorithmName
+    DuplicateCriteriaInDIDFilter, DIDFilterSyntaxError, InvalidAlgorithmName, ReplicaSorterSyntaxError
 
 from rucio.common.extra import import_extras
 from rucio.common.types import InternalAccount, InternalScope
@@ -1257,6 +1257,29 @@ def parse_did_filter_from_string_fe(input_string, name='*', type='collection', o
                 'name': name
             })
     return filters, type
+
+
+def parse_replica_sorter_from_string(sort_str):
+    """
+    Parses the replica sorter arguments from a string.
+
+    :param sort_str: String as the format 'SORT[,KEY=VAL]'
+
+    :returns: a tuple of (SORT, {KEY: VAL})
+    """
+    specs = sort_str.split(',')
+    sorter = specs[0]
+    sorter_kwarg = dict()
+    try:
+        for kvpair in specs[1:]:
+            sep_idx = kvpair.find('=')
+            assert sep_idx >= 0
+            k = kvpair[:sep_idx]
+            v = kvpair[sep_idx+1:]
+            sorter_kwarg[k] = v
+    except AssertionError:
+        raise ReplicaSorterSyntaxError("{} is not parsable".format(sort_str))
+    return sorter, sorter_kwarg
 
 
 def parse_replicas_from_file(path):
