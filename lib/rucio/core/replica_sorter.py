@@ -181,11 +181,13 @@ def __alto_client():
     return Client()
 
 
-def __get_alto_costs(pfns, client_ip, cost_map=None):
+def __get_alto_costs(pfns, client_ip, by=None, where=None, **kwargs):
     """
     Get the ALTO routing cost between 2 host.
     :param pfns : A list of pfns of replicas.
     :param client_ip : The client IP.
+    :param by : A list of ALTO cost metrics defined in `alto.conf`.
+    :param where : A set of constraints, each constraint represented as `<metric_name> <op> <val>`.
     """
     try:
         client = __alto_client()
@@ -203,11 +205,12 @@ def __get_alto_costs(pfns, client_ip, cost_map=None):
             # Host definitively unknown
             print(error)
 
-    _raw_costs = client.get_routing_costs(list(_lookup.values()), [client_ip], cost_map=cost_map)
+    _raw_costs = client.get_multiple_costs(list(_lookup.values()), [client_ip], metrics=by, where=where, **kwargs)
     costs = dict()
     for pfn in pfns:
         sip = _lookup.get(pfn)
-        costs[pfn] = _raw_costs[sip][client_ip] if sip else DEFAULT_ALTO_COST
+        if sip:
+            costs[pfn] = tuple(_raw_costs[sip][client_ip][m] for m in by)
     return costs
 
 
@@ -300,18 +303,25 @@ def sort_geoip(dictreplica: "Dict", client_location: "Dict", ignore_error: bool 
     return list(sorted(dictreplica, key=distance))
 
 
-def sort_alto(dictreplica: "Dict", client_location: "Dict", cost_map=None, order='ascend') -> "List":
+def sort_alto(dictreplica: "Dict", client_location: "Dict", by=None, where=None, order='ascend') -> "List":
     """
     Return a list of replicas sorted by routing cost evaluated by the ALTO server.
     :param dictreplica: A dict with replicas as keys (URIs).
     :param client_location: Location dictionary containing {'ip', 'fqdn', 'site', 'latitude', 'longitude'}
+    :param by: A list of ALTO cost metrics defined in `alto.conf`.
+    :param where: A set of constraints, each constraint represented as `<metric_name> <op> <val>`.
+    :param order: Sort replicas in ascending (default) or descending order.
     """
-    _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'], cost_map=cost_map)
+    if by:
+        by = by.split(';')
+    if where:
+        where = where.split(';')
+    _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'], by=by, where=where)
 
     def cost(pfn):
-        return _alto_costs.get(pfn, DEFAULT_ALTO_COST)
+        return _alto_costs.get(pfn)
 
-    return list(sorted(dictreplica, key=cost, reverse=(order!='ascend')))
+    return list(sorted([pfn for pfn in dictreplica if cost(pfn)], key=cost, reverse=(order!='ascend')))
 
 
 def sort_closeness(dictreplica: "Dict", client_location: "Dict") -> "List":
