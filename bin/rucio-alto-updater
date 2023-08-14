@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 2012-2022 CERN
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Authors:
+# - Jensen Zhang <hack@jensen-zhang.site>, 2022
+
+"""
+Dynamic RSE distance update using ALTO
+"""
+
+import argparse
+import signal
+
+def stop():
+    pass
+
+def get_parser():
+    """
+    Returns the argparse parser.
+    """
+    parser = argparse.ArgumentParser(description="The ALTO daemon is responsible for updating RSE distance dynamically using network information collected from the ALTO server.")
+    parser.add_argument("--run-once", action="store_true", default=False, help='One iteration only')
+    parser.add_argument("--ird", action="store", help='URI to the Information Resource Directory of the ALTO server')
+    parser.add_argument("--auth", action="store", help='Authentication to access the ALTO server')
+    parser.add_argument("--cost-service", action="store", help='The resource ID of a cost map or an endpoint cost service')
+    parser.add_argument("--cost-type", metavar="COST_MODE:COST_METRIC", action="store", help='The cost type used to query the cost service, e.g., numerical:residual-bw')
+    parser.add_argument("--adaptive-mode", action="store_true", default=False, help='If set, the cost will be queried for current running transfer requests')
+    parser.add_argument("--rses", action="store_true", help='RSE expression for RSEs to be listened to')
+    parser.add_argument("--polling-interval", metavar="interval", action="store", help='Set polling interval in seconds')
+    return parser
+
+if __name__ == "__main__":
+
+    signal.signal(signal.SIGTERM, stop)
+    parser = get_parser()
+    args = parser.parse_args()
+    try:
+        pass
+    except KeyboardInterrupt:
+        pass

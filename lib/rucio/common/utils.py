@@ -1267,7 +1267,7 @@ def parse_replica_sorter_from_string(sort_str):
 
     :returns: a tuple of (SORT, {KEY: VAL})
     """
-    specs = sort_str.split(',')
+    specs = sort_str.split(';')
     sorter = specs[0]
     sorter_kwarg = dict()
     try:

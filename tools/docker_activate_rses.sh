@@ -99,15 +99,17 @@ rucio-admin account set-limits root SSH1 -1
 rucio-admin scope add --account root --scope test
 
 # Create initial transfer testing data
-dd if=/dev/urandom of=file1 bs=10M count=1
-dd if=/dev/urandom of=file2 bs=10M count=1
-dd if=/dev/urandom of=file3 bs=10M count=1
-dd if=/dev/urandom of=file4 bs=10M count=1
+dd if=/dev/urandom of=file1 bs=1M count=1
+dd if=/dev/urandom of=file2 bs=1M count=1
+dd if=/dev/urandom of=file3 bs=1M count=1
+dd if=/dev/urandom of=file4 bs=1M count=1
 
 rucio upload --rse XRD1 --scope test file1
 rucio upload --rse XRD1 --scope test file2
 rucio upload --rse XRD2 --scope test file3
 rucio upload --rse XRD2 --scope test file4
+rucio upload --rse XRD3 --scope test file1
+rucio upload --rse XRD4 --scope test file1
 
 rucio add-dataset test:dataset1
 rucio attach test:dataset1 test:file1 test:file2
@@ -119,6 +121,7 @@ rucio add-container test:container
 rucio attach test:container test:dataset1 test:dataset2
 
 rucio add-rule test:container 1 XRD3
+rucio add-rule test:container 1 XRD4
 
 # Create complication
 rucio add-dataset test:dataset3

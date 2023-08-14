@@ -303,7 +303,7 @@ def sort_geoip(dictreplica: "Dict", client_location: "Dict", ignore_error: bool 
     return list(sorted(dictreplica, key=distance))
 
 
-def sort_alto(dictreplica: "Dict", client_location: "Dict", by=None, where=None, order='ascend') -> "List":
+def sort_alto(dictreplica: "Dict", client_location: "Dict", stmt=None, where=None, order='ascend') -> "List":
     """
     Return a list of replicas sorted by routing cost evaluated by the ALTO server.
     :param dictreplica: A dict with replicas as keys (URIs).
@@ -312,8 +312,8 @@ def sort_alto(dictreplica: "Dict", client_location: "Dict", by=None, where=None,
     :param where: A set of constraints, each constraint represented as `<metric_name> <op> <val>`.
     :param order: Sort replicas in ascending (default) or descending order.
     """
-    if by:
-        by = by.split(';')
+    if stmt:
+        by = stmt[4:-1].split(',')
     if where:
         where = where.split(';')
     _alto_costs = __get_alto_costs(list(dictreplica.keys()), client_location['ip'], by=by, where=where)

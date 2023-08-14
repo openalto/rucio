@@ -1062,6 +1062,6 @@ class ReplicaSorterSyntaxError(RucioException):
     Replica selection expression is not parsable.
     """
     def __init__(self, *args, **kwargs):
-        super(DIDFilterSyntaxError, self).__init__(*args, **kwargs)
+        super(ReplicaSorterSyntaxError, self).__init__(*args, **kwargs)
         self._message = 'Syntax error in replica selection expression.'
         self.error_code = 101
